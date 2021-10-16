@@ -6,4 +6,4 @@ import Ch5 as Ch5
 
 -- Run: npx spago run
 main :: Effect Unit
-main = Ch5.test2
+main = Ch5.test
