@@ -1,0 +1,2 @@
+# fp-book
+Learning PureScript
