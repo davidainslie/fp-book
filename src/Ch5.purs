@@ -2,6 +2,7 @@ module Ch5 where
 
 import Prelude (Unit, (+), show, discard)
 import Data.List (List(..), (:)) -- List(..) is shorthand for List(Nil, Cons) i.e. all data constructors
+import Data.Maybe (Maybe(..))
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -46,16 +47,49 @@ length = go 0 where
   go acc Nil = acc
   go acc (_ : xs) = go (acc + 1) xs
 
+head :: ∀ a. List a -> Maybe a
+head Nil = Nothing
+head (x : _) = Just x
+
+tail :: ∀ a. List a -> Maybe (List a)
+tail Nil = Nothing
+tail (_ : xs) = Just xs
+
+last :: ∀ a. List a -> Maybe a
+last Nil = Nothing
+last (x : Nil) = Just x
+last (_ : xs) = last xs
+
 -- -----------------------------------------------
 
 test :: Effect Unit
 test = do
   log (show (flip const 1 2))
+
   log $ show $ flip const 1 2
+
   flip const 1 2 # show # log
+
   log $ show $ singleton "xyz"
+
   log $ show $ null Nil
+
   log $ show $ null ("abc" : Nil)
+
   log $ show $ snoc (1 : 2 : Nil) 3
+
   log $ show $ lengthNotTailRecursive $ 1 : 2 : 3 : Nil
+
   log $ show $ length $ 1 : 2 : 3 : Nil
+
+  log $ show (head Nil :: Maybe Unit)
+
+  log $ show $ head ("abc" : "123" : Nil)
+
+  log $ show $ tail (Nil :: List Unit) -- OR log $ show (tail Nil :: Maybe (List Unit))
+
+  log $ show $ tail ("abc" : "123" : Nil)
+
+  log $ show $ last (Nil :: List Unit)
+
+  log $ show $ last $ "a" : "b" : "c" : Nil

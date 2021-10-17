@@ -4,7 +4,7 @@ Upon changing run: npx spago build
 -}
 {
   name = "my-project",
-  dependencies = [ "console", "effect", "lists", "prelude", "psci-support" ],
+  dependencies = [ "console", "effect", "lists", "prelude", "psci-support", "maybe" ],
   packages = ./packages.dhall,
   sources = [ "src/**/*.purs", "test/**/*.purs" ]
 }
