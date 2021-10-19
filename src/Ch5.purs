@@ -1,6 +1,6 @@
 module Ch5 where
 
-import Prelude (Unit, (+), (-), (==), (<), (>=), (/=), negate, show, discard, type (~>))
+import Prelude (Unit, (+), (-), (==), (<), (>), (>=), (/=), (<<<), negate, otherwise, show, discard, type (~>))
 import Data.List (List(..), (:)) -- List(..) is shorthand for List(Nil, Cons) i.e. all data constructors
 import Data.Maybe (Maybe(..))
 import Effect (Effect)
@@ -99,10 +99,33 @@ findLastIndex p xs = go 0 xs Nothing where
 -- ~> is a Natural Transformation which is a binary operator on Types NOT Values (so we only see it in the type signature).
 -- The Type on the left and right are both Functors
 reverse :: List ~> List 
-reverse xs = go Nil xs where
+reverse = go Nil where -- Note we are point free
   go :: ∀ a. List a -> List a -> List a
   go acc Nil = acc
   go acc (x : xs) = go (x : acc) xs
+
+concat :: ∀ a. List (List a) -> List a
+concat Nil = Nil
+concat (Nil : xss) = concat xss
+concat ((x : xs) : xss) = x : concat (xs : xss)
+
+filter :: ∀ a. (a -> Boolean) -> List a -> List a
+filter _ Nil = Nil
+filter p (x : xs) = if p x then x : filter p xs else filter p xs
+
+filter' :: ∀ a. (a -> Boolean) -> List a -> List a
+filter' _ Nil = Nil
+filter' p (x : xs)
+  | p x       = x : filter p xs
+  | otherwise = filter p xs
+
+-- Point free tail recursive version
+filter'' :: ∀ a. (a -> Boolean) -> List a -> List a
+filter'' p = reverse <<< go Nil where
+  go :: List a -> List a -> List a
+  go acc Nil            = acc
+  go acc (x : xs) | p x = go (x : acc) xs
+  go acc (_ : xs)       = go acc xs
 
 -- -----------------------------------------------
 
@@ -177,3 +200,7 @@ test = do
   log $ show $ findLastIndex (_ == 10) (11 : 12 : Nil)
 
   log $ show $ reverse (10 : 20 : 30 : Nil)
+
+  log $ show $ concat ((1 : 2 : 3 : Nil) : (4 : 5 : Nil) : (6 : Nil) : Nil : Nil)
+
+  log $ show $ filter (4 > _) $ (1 : 2 : 3 : 4 : 5 : 6 : Nil)
