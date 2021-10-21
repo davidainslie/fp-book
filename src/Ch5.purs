@@ -1,8 +1,9 @@
 module Ch5 where
 
-import Prelude (Unit, (+), (-), (==), (<), (>), (>=), (/=), (<<<), negate, otherwise, show, discard, type (~>))
+import Prelude (Unit, (+), (-), (==), (<), (>), (>=), (<=), (/=), (>>>), (<<<), max, negate, otherwise, show, discard, type (~>))
 import Data.List (List(..), (:)) -- List(..) is shorthand for List(Nil, Cons) i.e. all data constructors
 import Data.Maybe (Maybe(..))
+import Data.Tuple (Tuple(..), snd)
 import Effect (Effect)
 import Effect.Console (log)
 
@@ -127,6 +128,94 @@ filter'' p = reverse <<< go Nil where
   go acc (x : xs) | p x = go (x : acc) xs
   go acc (_ : xs)       = go acc xs
 
+catMaybes :: ∀ a. List (Maybe a) -> List a
+catMaybes Nil = Nil
+catMaybes (Nothing : xs) = catMaybes xs
+catMaybes (Just(x): xs)  = x : catMaybes xs
+
+-- Or using "case"
+catMaybes' :: ∀ a. List (Maybe a) -> List a
+catMaybes' Nil = Nil
+catMaybes' (x : xs) = case x of
+  Just y  -> y : catMaybes xs
+  Nothing -> catMaybes xs
+
+-- This first attempt was rubbish
+range' :: Int -> Int -> List Int
+range' start end = reverse $ go Nil start end where
+  go acc s e | s < e = go (s : acc) (s + 1) e
+  go acc s e | s > e = go (s : acc) (s - 1) e
+  go acc s _ = s : acc
+
+range :: Int -> Int -> List Int
+range start end | start == end = singleton start
+range start end = start : range next end where
+  next = start + (if start < end then 1 else (-1))
+
+-- Alternative to calculate the "step" only once i.e. whether to increment or decrement (the above recalculates for every recursion)
+range'' :: Int -> Int -> List Int
+range'' start end = go start where
+  step = if start < end then 1 else (-1)
+
+  go :: Int -> List Int
+  go s  | s == end  = singleton s
+        | otherwise = s : go (s + step)
+
+-- And the above as tail recursive:
+range''' :: Int -> Int -> List Int
+range''' start end = go Nil end where
+  step = if start < end then (-1) else 1
+
+  go :: List Int -> Int -> List Int
+  go acc e  | e == start  = e : acc
+            | otherwise   = go (e : acc) (e + step)
+
+take :: ∀ a. Int -> List a -> List a
+take _ Nil        = Nil
+take n _ | n <= 0 = Nil
+take n (x : xs)   = x : take (n - 1) xs
+
+-- And tail recursive (we could have gone point free, but can't as we've introduced use of "max" which then avoids needing a guard)
+take' :: ∀ a. Int -> List a -> List a
+take' n xs = go Nil (max 0 n) xs where
+  go :: List a -> Int -> List a -> List a
+  go acc _ Nil      = acc
+  go acc 0 _        = acc
+  go acc n (x : xs) = go (concat (acc : singleton x : Nil)) (n - 1) xs
+
+drop :: ∀ a. Int -> List a -> List a
+drop n xs = go (max 0 n) xs where
+  go :: Int -> List a -> List a
+  go _ Nil      = Nil
+  go 0 xs       = xs
+  go n (_ : xs) = go (n - 1) xs
+
+takeWhile :: ∀ a. (a -> Boolean) -> List a -> List a
+takeWhile p xs = go Nil xs where
+  go :: List a -> List a -> List a
+  go acc (x : xs) | p x = go (concat (acc : singleton x : Nil)) xs
+  go acc _ = acc
+
+dropWhile :: ∀ a. (a -> Boolean) -> List a -> List a
+dropWhile p (x : xs) | p x = dropWhile p xs
+dropWhile _ xs = xs
+
+{- 
+takeEnd 2 (1 : 2 : 3 : 4 : Nil)
+
+Tuple 0 Nil             -- base-case
+Tuple 1 (4 : Nil)       -- returning
+Tuple 2 (3 : 4 : Nil)   -- returning
+Tuple 3 (3 : 4 : Nil)   -- returning
+Tuple 4 (3 : 4 : Nil)   -- returning
+(3 : 4 : Nil)           -- snd
+-}
+takeEnd :: ∀ a. Int -> List a -> List a
+takeEnd n = go >>> snd where
+  go Nil = Tuple 0 Nil
+  go (x : xs) = go xs
+    # \t @ (Tuple c nl) -> if c < n then Tuple (c + 1) (x : nl) else t       
+
 -- -----------------------------------------------
 
 test :: Effect Unit
@@ -204,3 +293,37 @@ test = do
   log $ show $ concat ((1 : 2 : 3 : Nil) : (4 : 5 : Nil) : (6 : Nil) : Nil : Nil)
 
   log $ show $ filter (4 > _) $ (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+
+  log $ show $ catMaybes (Just 1 : Nothing : Just 2 : Nothing : Nothing : Just 5 : Nil)
+
+  log $ show $ range 1 10
+  
+  log $ show $ range''' 1 10
+  
+  log $ show $ range 3 (-3)
+  
+  log $ show $ range''' 3 (-3)
+
+  log $ show $ take 5 (12 : 13 : 14 : Nil)
+  
+  log $ show $ take' 5 (12 : 13 : 14 : Nil)
+  
+  log $ show $ take 5 (-7 : 9 : 0 : 12 : 13 : 45 : 976 : -19 : Nil)
+  
+  log $ show $ take' 5 (-7 : 9 : 0 : 12 : 13 : 45 : 976 : -19 : Nil)
+  
+  log $ show $ drop 2 (1 : 2 : 3 : 4 : 5 : 6 : 7 : Nil)
+  
+  log $ show $ drop 10 (Nil :: List Unit)
+  
+  log $ show $ takeWhile (_ > 3) (5 : 4 : 3 : 99 : 101 : Nil)
+  
+  log $ show $ takeWhile (_ == -17) (1 : 2 : 3 : Nil)
+  
+  log $ show $ dropWhile (_ > 3) (5 : 4 : 3 : 99 : 101 : Nil)
+  
+  log $ show $ dropWhile (_ == -17) (1: 2 : 3 : Nil)
+  
+  log $ show $ takeEnd 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+  
+  log $ show $ takeEnd 10 (1 : Nil)
