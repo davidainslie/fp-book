@@ -213,8 +213,21 @@ Tuple 4 (3 : 4 : Nil)   -- returning
 takeEnd :: ∀ a. Int -> List a -> List a
 takeEnd n = go >>> snd where
   go Nil = Tuple 0 Nil
-  go (x : xs) = go xs
-    # \t @ (Tuple c nl) -> if c < n then Tuple (c + 1) (x : nl) else t       
+  go (x : xs) = go xs # \t @ (Tuple c nl) -> if c < n then Tuple (c + 1) (x : nl) else t 
+
+dropEnd :: ∀ a. Int -> List a -> List a
+dropEnd n = go >>> snd where
+  go Nil = Tuple 0 Nil
+  go (x : xs) = go xs # \(Tuple c nl) -> Tuple (c + 1) $ if c < n then nl else x : nl
+
+zip :: ∀ a b. List a -> List b -> List (Tuple a b)
+zip _ Nil = Nil
+zip Nil _ = Nil
+zip (a : as) (b : bs) = Tuple a b : zip as bs
+
+unzip :: ∀ a b. List (Tuple a b) -> Tuple (List a) (List b)
+unzip Nil = Tuple Nil Nil
+unzip (Tuple a b : ts) = unzip ts # \(Tuple as bs) -> Tuple (a : as) (b : bs)
 
 -- -----------------------------------------------
 
@@ -327,3 +340,21 @@ test = do
   log $ show $ takeEnd 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
   
   log $ show $ takeEnd 10 (1 : Nil)
+
+  -- Prints (1 : 2 : 3 : Nil)
+  log $ show $ dropEnd 3 (1 : 2 : 3 : 4 : 5 : 6 : Nil)
+
+  -- Prints (Nil)
+  log $ show $ dropEnd 10 (1 : Nil)
+
+  log $ show $ zip (1 : 2 : 3 : Nil) ("a" : "b" : "c" : "d" : "e" : Nil)
+
+  log $ show $ zip ("a" : "b" : "c" : "d" : "e" : Nil) (1 : 2 : 3 : Nil)
+
+  log $ show $ zip (Nil :: List Unit) (1 : 2 : Nil)
+
+  log $ show $ unzip (Tuple 1 "a" : Tuple 2 "b" : Tuple 3 "c" : Nil)
+
+  log $ show $ unzip (Tuple "a" 1 : Tuple "b" 2 : Tuple "c" 3 : Nil)
+
+  log $ show $ unzip (Nil :: List (Tuple Unit Unit))
