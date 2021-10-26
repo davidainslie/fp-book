@@ -1,3 +1,5 @@
+-- Functional foundations
+
 module Ch5 where
 
 import Prelude (Unit, (+), (-), (==), (<), (>), (>=), (<=), (/=), (>>>), (<<<), max, negate, otherwise, show, discard, type (~>))
