@@ -3,9 +3,18 @@
 module Ch6 where
 
 import Prelude
+import Data.Array (sort)
+import Data.Generic.Rep (class Generic)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
 
+{- 
+Address is just an alias for Record, instead of being a full blown data type.
+But note:
+Records for example can only be compared for equality if and only if all of their field types have Eq instances.
+-}
 type Address = {
   street1 :: String,
   street2 :: String,
@@ -84,6 +93,163 @@ getDirections :: ∀ a. Show a => HasAddress a => a -> Directions
 
 getDirections :: ∀ a. (Show a, HasAddress a) => a -> Directions
 -}
+
+instance eqPerson :: Eq Person where
+  eq (Person p1) (Person p2) =
+    p1.name == p2.name && p1.age == p2.age && p1.address == p2.address
+
+-- Ord instance for Unit (already defined, but let's try our own, where we see that Ord is constrained by Eq)
+newtype MyUnit = MyUnit Unit
+
+instance eqMyUnit :: Eq MyUnit where
+  eq _ _ = true
+
+instance ordMyUnit :: Ord MyUnit where
+  compare _ _ = EQ
+
+
+data Place = First | Second | Third
+
+instance eqPlace :: Eq Place where
+  eq First First = true
+  eq Second Second = true
+  eq Third Third = true
+  eq _ _ = false
+
+instance ordPlace :: Ord Place where
+  compare First First = EQ 
+  compare Second Second = EQ 
+  compare Third Third = EQ 
+  compare First _ = LT
+  compare Second First = GT
+  compare Second Third = LT
+  compare Third _ = GT
+
+x :: Array Place
+x = [Third, First, Second] 
+
+sx :: Array Place
+sx = sort x -- [First, Second, Third]
+
+-- Deriving
+
+data SomeType = This | That | TheOther | AndYetAnother
+
+derive instance eqSomeType :: Eq SomeType
+
+derive instance ordSomeType :: Ord SomeType
+
+-- Generic deriving
+
+derive instance genericSomeType :: Generic SomeType _
+
+instance showSomeType :: Show SomeType where
+  show = genericShow
+
+-- Manual vs generic:
+
+{-
+Manual:
+
+instance showPlace :: Show Place where
+  show First  = "First"
+  show Second = "Second"
+  show Third  = "Third"
+-}
+
+-- Generic
+derive instance genericPlace :: Generic Place _
+
+instance showPlace :: Show Place where
+  show = genericShow
+
+
+-- Newtype typeclass
+
+newtype FirstName = FirstName String
+
+derive instance newTypeFirstName :: Newtype FirstName _
+
+derive instance eqFirstName :: Eq FirstName
+
+newtype LastName = LastName String
+
+derive instance newTypeLastName :: Newtype LastName _
+
+-- Unwrap via pattern patching
+fullName :: FirstName -> LastName -> String
+fullName (FirstName first) (LastName last) = first <> " " <> last
+
+-- Unwrap via Newtype's method
+fullName' :: FirstName -> LastName -> String
+fullName' first last = unwrap first <> " " <> unwrap last
+
+-- Example of when the Newtype typeclass comes in handy:
+
+glueNames :: ∀ a b.
+  Newtype a String => Newtype b String =>
+  String -> a -> b -> String
+glueNames between n1 n2 = unwrap n1 <> between <> unwrap n2
+
+lastNameFirst :: LastName -> FirstName -> String
+lastNameFirst = glueNames ", "
+
+fullName'' :: FirstName -> LastName -> String
+fullName'' = glueNames " "
+
+
+-- Coming back to HasAddress, we replace data Person with newtype Person
+newtype Person' =
+  Person' {
+    name :: String,
+    age :: Int,
+    address :: Address
+  }
+
+instance hasAddressPerson' :: HasAddress Person' where
+  getAddress (Person' p) = p.address
+
+newtype Ceo = Ceo Person'
+
+newtype Janitor = Janitor Person'
+
+{-
+Manual:
+
+instance hasAddressCeo :: HasAddress Ceo where
+  getAddress (Ceo p) = getAddress p
+
+instance hasAddressJanitor :: HasAddress Janitor where
+  getAddress (Janitor p) = getAddress p
+-}
+
+
+{-
+Semi Generic:
+
+derive instance newtypeCeo :: Newtype Ceo _
+
+derive instance newtypeJanitor :: Newtype Janitor _
+
+genericPersonHasAddress :: ∀ a. Newtype a Person => a -> Address
+genericPersonHasAddress wrappedPerson = getAddress $ unwrap wrappedPerson
+
+instance hasAddressCeo :: HasAddress Ceo where
+  getAddress = genericPersonHasAddress
+
+instance hasAddressJanitor :: HasAddress Janitor where
+  getAddress = genericPersonHasAddress
+-}
+
+-- Fully Generic
+derive instance newtypeCeo :: Newtype Ceo _
+
+derive newtype instance hasAddressCeo :: HasAddress Ceo
+
+derive instance newtypeJanitor :: Newtype Janitor _
+
+derive newtype instance hasAddressJanitor :: HasAddress Janitor
+
 
 -- -----------------------------------------------
 
