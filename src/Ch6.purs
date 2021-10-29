@@ -251,8 +251,48 @@ derive instance newtypeJanitor :: Newtype Janitor _
 derive newtype instance hasAddressJanitor :: HasAddress Janitor
 
 
+-- The following is an example of Scala ambiguous implicits
+class Combine a where
+  combine :: a -> a -> a
+
+-- We want an instance to add Ints:
+instance combineInt :: Combine Int where
+  combine = (+)
+
+-- But if we wanted to multiple Ints another time we can't just:
+{-
+instance combineMultipleInt :: Combine Int where
+  combine = (*)
+-}
+
+-- A solution is to use newtype
+newtype AddInt = AddInt Int
+
+newtype MultipleInt = MultipleInt Int
+
+instance combineAddInt :: Combine AddInt where
+  combine (AddInt x) (AddInt y) = AddInt (x + y)
+
+instance combineMultipleInt :: Combine MultipleInt where
+  combine (MultipleInt x) (MultipleInt y) = MultipleInt (x + y)
+
+-- Instance chaining allows to have a specific instance then fallback onto other instances:
+class IsRecord a where
+  isRecord :: a -> Boolean
+
+instance isRecordRecord :: IsRecord (Record a) where
+  isRecord _ = true
+else instance isRecordOther :: IsRecord a where
+  isRecord _ = false
+
+-- Typeclass RULEs - instances must be either:
+-- 1. Defined in the same module as the typeclass
+-- 2. Defined in the same module as the type
+
+-- If the above is not followed, we then have an Orphaned Instance.
+
 -- -----------------------------------------------
 
 test :: Effect Unit
 test = do
-  log $ show person 
+  log $ show person
