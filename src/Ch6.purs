@@ -270,6 +270,7 @@ newtype AddInt = AddInt Int
 
 newtype MultipleInt = MultipleInt Int
 
+-- Note we take the type i.e. newtype AddInt, so take AddInt and that forms the instance signature
 instance combineAddInt :: Combine AddInt where
   combine (AddInt x) (AddInt y) = AddInt (x + y)
 

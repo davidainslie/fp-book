@@ -19,7 +19,7 @@ derive instance eqMaybe :: Eq a => Eq (Maybe a)
 
 derive instance ordMaybe :: Ord a => Ord (Maybe a)
 
-derive instance genMaybe :: Generic (Maybe a) _
+derive instance genericMaybe :: Generic (Maybe a) _
 
 instance showMaybe :: Show a => Show (Maybe a) where
   show = genericShow
@@ -32,7 +32,7 @@ derive instance eqEither :: (Eq a, Eq b) => Eq (Either a b)
 
 derive instance ordEither :: (Ord a, Ord b) => Ord (Either a b)
 
-derive instance genEither :: Generic (Either a b) _
+derive instance genericEither :: Generic (Either a b) _
 
 instance showEither :: (Show a, Show b) => Show (Either a b) where
   show = genericShow

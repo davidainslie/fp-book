@@ -3,10 +3,12 @@
 module Ch9 where
 
 import Data.Generic.Rep (class Generic)
+import Data.Maybe (Maybe(..))
+import Data.Show (class Show, show)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
-import Prelude (Unit, class Show, class Eq, ($), discard, show, (==), (&&))
+import Prelude (Unit, class Show, class Eq, ($), discard, (==), (&&))
 
 --------------------------------------------------------
 
@@ -24,7 +26,7 @@ data AndBool = AFalse | ATrue
 
 derive instance eqAndBool :: Eq AndBool
 
-derive instance genAndBool :: Generic AndBool _
+derive instance genericAndBool :: Generic AndBool _
 
 instance showAndBool :: Show AndBool where
   show = genericShow
@@ -42,7 +44,7 @@ data OrBool = OFalse | OTrue
 
 derive instance eqOrBool :: Eq OrBool
 
-derive instance genOrBool :: Generic OrBool _
+derive instance genericOrBool :: Generic OrBool _
 
 instance showOrBool :: Show OrBool where
   show = genericShow
@@ -57,6 +59,13 @@ instance monoidOrBool :: Monoid OrBool where
 --------------------------------------------------------
 
 data Mod4 = Zero | One | Two | Three
+
+derive instance eqMod4 :: Eq Mod4
+
+derive instance genericMod4 :: Generic Mod4 _
+
+instance showMod4 :: Show Mod4 where
+  show = genericShow
 
 instance semigroupMod4 :: Semigroup Mod4 where
   append Zero x = x
@@ -93,6 +102,42 @@ instance commutativeMod4 :: Commutative Mod4
 
 --------------------------------------------------------
 
+newtype First a = First (Maybe a)
+
+newtype Last a = Last (Maybe a)
+
+-- Note we take the type i.e. newtype First a, so take "First a" and that forms the instance signature
+instance semigroupFirst :: Semigroup (First a) where
+  append (First Nothing) x = x
+  append x _ = x
+
+instance monoidFirst :: Monoid (First a) where
+  mempty = First Nothing
+
+-- The following would only show e.g. (Just 77) but we want to see e.g. (First (Just 77))
+-- derive newtype instance firstShow :: Show a => Show (First a)
+
+derive instance genericFirst :: Generic (First a) _
+
+instance showFirst :: Show a => Show (First a) where
+  show = genericShow
+
+instance semigroupLast :: Semigroup (Last a) where
+  append x (Last Nothing) = x
+  append _ x = x
+
+instance monoidLast :: Monoid (Last a) where
+  mempty = Last Nothing
+
+-- derive newtype instance lastShow :: Show a => Show (Last a)
+
+derive instance genericLast :: Generic (Last a) _
+
+instance showLast :: Show a => Show (Last a) where
+  show = genericShow
+
+--------------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show $ ATrue <> ATrue
@@ -107,6 +152,12 @@ test = do
   -----------------------------
   verifyOrBoolSemigroup
   verifyOrBoolMonoid
+  -----------------------------
+  verifyMod4Semigroup
+  verifyMod4Monoid
+  -----------------------------
+  log $ show $ First Nothing <> First (Just 77)
+  log $ show $ Last (Just 1) <> Last (Just 99)
 
 verifyAndBoolSemigroup :: Effect Unit
 verifyAndBoolSemigroup = do
@@ -129,3 +180,15 @@ verifyOrBoolMonoid = do
   log "Verifying OrBool Monoid Laws (2 tests)"
   log $ show $ OTrue <> mempty == mempty <> OTrue && OTrue <> mempty == OTrue
   log $ show $ OFalse <> mempty == mempty <> OFalse && OFalse <> mempty == OFalse
+
+verifyMod4Semigroup :: Effect Unit
+verifyMod4Semigroup = do
+  log "Verifying Mod4 Semigroup Laws (1 test)"
+  log $ show $ (Zero <> One) <> Two == Zero <> (One <> Two)
+
+verifyMod4Monoid :: Effect Unit
+verifyMod4Monoid = do
+  log "Verifying Mod4 Monoid Laws (3 tests)"
+  log $ show $ One <> mempty == mempty <> One && One <> mempty == One
+  log $ show $ Two <> mempty == mempty <> Two && Two <> mempty == Two
+  log $ show $ Three <> mempty == mempty <> Three && Three <> mempty == Three

@@ -41,7 +41,7 @@ derive newtype instance eqAge :: Eq Age
 
 data Occupation = Doctor | Dentist | Lawyer | Unemployed
 
-derive instance genOccupation :: Generic Occupation _
+derive instance genericOccupation :: Generic Occupation _
 
 instance showOccupation :: Show Occupation where
   show = genericShow
