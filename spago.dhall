@@ -4,7 +4,23 @@ Upon changing run: npx spago build
 -}
 {
   name = "my-project",
-  dependencies = [ "console", "effect", "lists", "prelude", "psci-support", "maybe", "tuples", "arrays", "ordered-collections", "newtype", "strings", "integers" ],
   packages = ./packages.dhall,
-  sources = [ "src/**/*.purs", "test/**/*.purs" ]
+  sources = [ "src/**/*.purs", "test/**/*.purs" ],
+  dependencies = [
+    "console",
+    "effect",
+    "lists",
+    "prelude",
+    "psci-support",
+    "maybe",
+    "either",
+    "tuples",
+    "arrays",
+    "ordered-collections",
+    "newtype",
+    "strings",
+    "integers",
+    "nonempty",
+    "foldable-traversable"
+  ]
 }

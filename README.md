@@ -27,6 +27,11 @@ forall (t2 :: Type). Either String t2
 > :t Right (Just 42)
 forall (t1 :: Type). Either t1 (Maybe Int)
 
+-- Load a module and run a function:
+> import Ch11FoldableTree
+> test
+(5 : -1 : 14 : 99 : Nil)
+
 > ^D # i.e. control-D to exit REPL
 See ya!
 ()
