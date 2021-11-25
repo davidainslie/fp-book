@@ -8,3 +8,7 @@
 /.purs*
 /.psa*
 /.spago
+.metals
+.vscode
+.lsp
+.cli-kondo
