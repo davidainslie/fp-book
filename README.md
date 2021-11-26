@@ -95,7 +95,7 @@ We get to pick what our Objects and Morphisms are, which depends on what we’re
 This Category is traditionally called Hask after Haskell. But works just fine for PureScript.
 
 And as always in Math, there are laws:
-> • Each Morphism f has a Source Object a and Target Object b and is written like f: a → b and we say "f is a morphism from a to b"
-> • Morphisms compose
-> • There is an Identity Morphism for every Object, i.e. 1<sub>x</sub>: x → x
-> • Composition is Associative: if f: a -> b, g: b -> c, and h: c -> d then h ∘ (g ∘ f) = (h ∘ g) ∘ f
+- Each Morphism f has a Source Object a and Target Object b and is written like f: a → b and we say "f is a morphism from a to b"
+- Morphisms compose
+- There is an Identity Morphism for every Object, i.e. 1<sub>x</sub>: x → x
+- Composition is Associative: if f: a -> b, g: b -> c, and h: c -> d then h ∘ (g ∘ f) = (h ∘ g) ∘ f
