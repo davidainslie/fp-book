@@ -86,7 +86,7 @@ Here’s how we can represent numbers:
 
 Notice that the function f from the Lambda Calculus’s encoding is our Succ Data Constructor and the x in Church Numerals is our Zero.
 
-## Category Theory (Scratching the Surface)
+## Category Theory
 
 Definition of a Category:
 > A Category consists of a Set of Objects and a Set of Morphisms between the Objects.
@@ -99,3 +99,98 @@ And as always in Math, there are laws:
 - Morphisms compose
 - There is an Identity Morphism for every Object, i.e. 1<sub>x</sub>: x → x
 - Composition is Associative: if f: a -> b, g: b -> c, and h: c -> d then h ∘ (g ∘ f) = (h ∘ g) ∘ f
+
+## Functor
+
+```purescript
+f :: ∀ a b. a -> b
+```
+
+While `Morphisms` are mappings between `Objects`, `Functors` are mappings between `Categories`.
+
+Functors that map back to the SAME Category are known as `EndoFunctors`.
+So all Functors in PureScript are really `EndoFunctors` but everyone just says `Functors`.
+
+> Functors preserve Categorical Structure.
+> In Abstract Algebra, functions that preserves the Algebraic Structure of say a Group are called Homomorphism (Homo means same and morph means shape).
+> Here Functors are like Homomorphisms since they too preserve the Categorical Structure.
+
+```purescript
+class Functor f where
+  map :: ∀ a b. (a -> b) -> (f a -> f b)
+
+infixl 4 map as <$>
+
+-- e.g.
+instance functorMaybe :: Functor Maybe where
+  map _ Nothing = Nothing
+  map f (Just x) = Just $ f x
+
+instance functorEither :: Functor (Either a) where
+  map _ (Left x) = Left x
+  map f (Right y) = Right $ f y  
+```
+
+#### Functor Laws
+
+```purescript
+-- Identity
+map identity = identity
+-- The Identity law says that if we map the identity function, then it’s equivalent to just calling identity on the Functor.
+-- Notice that this law means that map can NEVER change the structure of the Functor. 
+
+-- Composition
+map (g <<< f) = map g <<< map f
+-- The Composition law says that mapping the Composition of 2 functions is equivalent to mapping each and Composing the results.
+```
+
+#### Proof
+
+Use `Maybe` to prove:
+```purescript
+data Maybe a = Nothing | Just a
+
+instance functorMaybe :: Functor Maybe where
+  map _ Nothing = Nothing
+  map f (Just x) = Just $ f x
+
+-- Identity proof for Nothing:
+map identity Nothing = identity Nothing
+-- Substitute left side
+Nothing = identity Nothing
+-- Substitute right side
+Nothing = Nothing 
+
+-- Identity proof for Just:
+ map identity (Just x) = identity (Just x)
+ -- Substitute left side
+ Just (identity x) = identity (Just x)
+ -- Function application
+ Just x = identity (Just x)
+ -- Function application
+ Just x = Just x
+
+ -- Composition for Nothing:
+ map (g <<< f) Nothing = (map g <<< map f) Nothing
+ -- Substitute left side
+ Nothing = (map g <<< map f) Nothing
+ -- Function composition
+ Nothing = map g (map f Nothing)
+ -- Substitute right side
+ Nothing = map g Nothing
+ -- Substitute right side
+ Nothing = Nothing
+
+ -- Composition for Just:
+ map (g <<< f) (Just x) = (map g <<< map f) (Just x)
+ -- Substitute left side
+ Just ((g <<< f) x) = (map g <<< map f) (Just x)
+ -- Function composition
+ Just (g (f x)) = (map g <<< map f) (Just x)
+ -- Function composition
+ Just (g (f x)) = map g (map f (Just x))
+ -- Substitute right side
+ Just (g (f x)) = map g (Just (f x))
+ -- Substitute right side
+ Just (g (f x)) = Just (g (f x))
+```
