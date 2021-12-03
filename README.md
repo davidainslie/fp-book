@@ -131,6 +131,44 @@ instance functorEither :: Functor (Either a) where
   map f (Right y) = Right $ f y  
 ```
 
+NOTE about Either instance. One would initially think that the instance would be defined as:
+`instance functorEither :: Functor Either where`
+
+but that does not compile because the `Kind`s wont's match.
+Comparing the Functor definition and Either the kinds don't align:
+```purescript
+f :: Type -> Type
+
+Either :: Type -> Type -> Type
+```
+
+We get around this by `partially applying` types to either.
+Just like functions, we can partially apply Type Constructors which are function like:
+```purescript
+f :: Type -> Type
+
+Either a :: Type -> Type
+```
+
+Left has to be constant for the Functor instance of Either as the following would not work:
+```purescript
+instance functorEither :: Functor (Either a) where
+  map f (Left x) = Left $ f x -- COMPILER ERROR!!
+  map f (Right y) = Right $ f y
+```
+
+Above we have fixed the Left and it will actually be `a` coming into the Right according to the Functor declaration i.e. `f a`.
+It might be easier to think of the following code (for illustration purposes):
+
+```purescript
+class Functor f where
+  map :: ∀ right result. (right -> result) -> (f right -> f result) -- i.e. fn is a right -> result
+
+instance functorEither :: Functor (Either left) where
+  map fn (Left left) = Left $ fn left -- COMPILER ERROR!! fn expects a right 
+  map fn (Right right) = Right $ fn right  
+```
+
 #### Functor Laws
 
 ```purescript
@@ -194,3 +232,60 @@ Nothing = Nothing
  -- Substitute right side
  Just (g (f x)) = Just (g (f x))
 ```
+
+## Bifunctor
+
+The Functor instance of Either `short-circuits`. We are forced to short circuit by Functor definition and partially applying our types.
+
+But what if we wanted a `non short-circuit` version of Either e.g.
+
+```purescript
+data Choice a b = PickA a | PickB b
+```
+
+As mentioned, Functor forces our hand on all but the last Type parameter. We again have to short-circuit when we don't want to e.g.:
+```purescript
+instance functorChoice :: Functor (Choice a) where
+  map _ (PickA x) = PickA x
+  map f (PickB y) = PickB $ f y
+```
+
+In steps `Bifunctor`.
+```purescript
+class Bifunctor f where
+  bimap :: ∀ a b c d. (a -> c) -> (b -> d) -> f a b -> f c d  
+```
+
+Functor only maps 1 of the Type parameters - to map 2 Type parameters we have Bifunctor.
+We can now have the following Bifunctor instance for Choice:
+```purescript
+instance bifunctorChoice :: Bifunctor Choice where
+  bimap f _ (PickA x) = PickA $ f x
+  bimap _ g (PickB y) = PickB $ g y
+```
+
+We no longer have to use Choice a like we did with Functor that’s because Bifunctor’s f takes 2 Parameters and so does Choice - In other words, their Kinds match.
+
+Choice is a `Sum Type` (`Coproduct`), but what about a `Product Type`? Well, we could implement the following for a Tuple:
+```purescript
+data Tuple a b = Tuple a b
+
+instance bifunctorTuple :: Bifunctor Tuple where
+  bimap f g (Tuple x y) = Tuple (f x) (g y)
+```
+
+and if we only wanted to map the left side of the Tuple, we could:
+```purescript
+lmap :: ∀ a b c f. Bifunctor f => (a -> b) -> f a c -> f b c
+lmap f = bimap f identity
+```
+
+For a Tuple of 3 types we again have to fix a type parameter to match kinds e.g.
+```purescript
+data Threeple a b c = Threeple a b c
+
+instance bifunctorTuple :: Bifunctor (Threeple a) where
+  bimap f g (Threeple x y z) = Threeple x (f y) (g z)
+```
+
+Here we fix `a` and so the `x` (of Type `a`) is unaffected by the `bimap` function.

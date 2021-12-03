@@ -21,6 +21,7 @@ Upon changing run: npx spago build
     "strings",
     "integers",
     "nonempty",
-    "foldable-traversable"
+    "foldable-traversable",
+    "bifunctors"
   ]
 }

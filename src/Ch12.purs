@@ -1,15 +1,6 @@
 -- Functors
 
-module Ch12
-  ( divide
-  , divide'
-  , f
-  , f'
-  , h
-  , hdf
-  , test
-  )
-  where
+module Ch12 where
 
 import Data.Either (Either(..))
 import Data.EuclideanRing (class EuclideanRing)
