@@ -2,12 +2,13 @@
 
 module Ch13 where
 
+import Data.Eq (class Eq)
 import Data.Generic.Rep (class Generic)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
-import Prelude (class Show, Unit, show, discard, ($), (/))
--- Remembering that "discard" if for "do syntax"
+import Prelude (class Show, Unit, show, discard, ($), (/), (<>), (==), identity, (<<<), (*))
+-- Remembering that "discard" is for "do syntax"
 
 -----------------------------------------------
 
@@ -24,6 +25,8 @@ derive instance genericMaybe :: Generic (Maybe a) _
 
 instance showMaybe :: Show a => Show (Maybe a) where
   show = genericShow
+
+derive instance eqMaybe :: Eq a => Eq (Maybe a)
 
 {- 
 NOTICE we do not specify an "a" as in "Functor Maybe a".
@@ -50,6 +53,34 @@ instance functorEither :: Functor (Either a) where
 
 -----------------------------------------------
 
+data Tuple a b = Tuple a b
+
+derive instance genericTuple :: Generic (Tuple a b) _
+
+instance showTuple :: (Show a, Show b) => Show (Tuple a b) where
+  show = genericShow
+
+derive instance eqTuple :: (Eq a, Eq b) => Eq (Tuple a b)  
+
+instance functorTuple :: Functor (Tuple a) where
+  map :: ∀ b c. (b -> c) -> Tuple a b -> Tuple a c
+  map fn (Tuple a b) = Tuple a $ fn b
+
+-----------------------------------------------
+
+data Threeple a b c = Threeple a b c
+
+derive instance genericThreeple :: Generic (Threeple a b c) _
+
+instance showThreeple :: (Show a, Show b, Show c) => Show (Threeple a b c) where
+  show = genericShow
+
+instance functorThreeple :: Functor (Threeple a b) where
+  map :: ∀ c d. (c -> d) -> Threeple a b c -> Threeple a b d
+  map fn (Threeple a b c) = Threeple a b $ fn c
+
+-----------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show $ (_ / 2) <$> Just 10
@@ -57,3 +88,18 @@ test = do
 
   log $ show $ (_ / 2) <$> (Right 10 :: Either Unit _)
   log $ show $ (_ / 2) <$> (Left "Error reason" :: Either _ Int)
+
+  log $ show $ (_ / 2) <$> Tuple 10 20
+  log $ show $ (_ / 2) <$> Threeple 10 20 40
+
+  -- Functor Laws
+  log $ show $ "Maybe Identity for Nothing: " <> show ((identity <$> Nothing) == (Nothing :: Maybe Unit))
+  log $ show $ "Maybe Identity for Just:    " <> show ((identity <$> Just [1, 2]) == Just [1, 2])
+
+  let g x = x * 2
+      f x = x * 3
+  log $ show $ "Maybe Composition for Nothing: " <> show ((map (g <<< f) Nothing) == (map g <<< map f) Nothing)
+  log $ show $ "Maybe Composition for Just:    " <> show ((map (g <<< f) (Just 60)) == (map g <<< map f) (Just 60))
+
+  log $ show $ "Tuple Identity:    " <> show ((identity <$> Tuple 10 20) == Tuple 10 20)
+  log $ show $ "Tuple Composition: " <> show ((map (g <<< f) (Tuple 10 20)) == (map g <<< map f) (Tuple 10 20))
