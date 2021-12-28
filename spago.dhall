@@ -1,6 +1,7 @@
 {-
 Welcome to a Spago project! You can edit this file as you like.
-Upon changing run: npx spago build
+Upon changing run:
+npx spago build
 -}
 {
   name = "my-project",
@@ -22,6 +23,8 @@ Upon changing run: npx spago build
     "integers",
     "nonempty",
     "foldable-traversable",
-    "bifunctors"
+    "bifunctors",
+    "contravariant",
+    "profunctor"
   ]
 }

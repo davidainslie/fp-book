@@ -2,8 +2,8 @@ module Main where
 
 import Effect (Effect)
 import Prelude
-import Ch15 as Ch15
+import Ch16 as Ch16
 
 -- Run: npx spago run
 main :: Effect Unit
-main = Ch15.test
+main = Ch16.test
