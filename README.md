@@ -4,6 +4,8 @@
 npm install -g purescript
 
 npm install -g spago
+
+npm install
 ```
 
 ```shell
