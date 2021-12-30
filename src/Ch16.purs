@@ -1,4 +1,4 @@
---Applicative Functors, Traversables and Alternatives
+-- Applicative Functors, Traversables and Alternatives
 module Ch16 where
 
 import Data.List
@@ -264,6 +264,35 @@ combinedLeftRight = combineList (fromFoldable [Right 1, Left "err", Right 3, Lef
 
 --------------------------------
 
+-- Example:
+tuples :: Array (Tuple Int Int)
+tuples = Tuple <$> [10,20] <*> [3, 4] -- [(Tuple 10 3), (Tuple 10 4), (Tuple 20 3), (Tuple 20 4)]
+
+--------------------------------
+
+{-
+An Applicative is Commutative IFF (if and only iff):
+
+f <$> x <*> y = flip f <$> y <*> x
+
+This says that if we apply Parameters x and y to f and it is equal to flipping the Parameters to the function and then applying x and y in reverse,
+then <*> is Commutative.
+-}
+
+-- Works for Maybe:
+maybe     = (-) <$> Just 3 <*> Just 9         -- Just -6
+maybeFlip = flip (-) <$> Just 9 <*> Just 3    -- Just -6
+
+-- DOES NOT work for Either:
+either      = (+) <$> Left "err1" <*> Left "err2"       -- Left "err1"
+eitherFlip  = flip (+) <$> Left "err2" <*> Left "err1"  -- Left "err2"
+
+-- DOES NOT work for Array (or List):
+array     = (+) <$> [2, 3] <*> [7, 13]       -- [9, 15, 10, 16]
+arrayFlip = flip (+) <$> [7, 13] <*> [2, 3]  -- [9, 10, 15, 16]
+
+--------------------------------
+
 test :: Effect Unit
 test = do
   log $ show $ functionInContext
@@ -279,3 +308,5 @@ test = do
   log "------------------------------------------"
   log $ show $ combinedRight
   log $ show $ combinedLeftRight
+  log "------------------------------------------"
+  log $ show $ tuples

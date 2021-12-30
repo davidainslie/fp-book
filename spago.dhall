@@ -25,6 +25,8 @@ npx spago build
     "foldable-traversable",
     "bifunctors",
     "contravariant",
-    "profunctor"
+    "profunctor",
+    "identity",
+    "control"
   ]
 }
