@@ -11,4 +11,4 @@
 .metals
 .vscode
 .lsp
-.cli-kondo
+.clj-kondo
