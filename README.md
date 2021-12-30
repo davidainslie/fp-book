@@ -1,6 +1,12 @@
 # FP Made Easier with PureScript
 
 ```shell
+npm install -g purescript
+
+npm install -g spago
+```
+
+```shell
 # Build e.g. after changes to spago.dhall
 npx spago build
 
