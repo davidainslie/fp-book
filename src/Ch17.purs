@@ -1,4 +1,13 @@
-module Ch17 where
+module Ch17
+
+(
+  Age (..),         -- Export both Type Constructor and Data Constructor using (..)
+  FamilyAges,       -- Only export Type Constructor meaning you cannot construct the Type directly (we want to force the client to use our smart constructor createFamilyAges)
+  FamilyAgesRow,    -- Export Type Alias
+  Validation,       -- Upon calling smart constructor, client get back a Validation, so needs to know about this type, so again we do not export the Data Constructor
+  createFamilyAges, -- Our smart constructor
+  test
+) where
 
 import Data.Bifunctor (class Bifunctor)
 import Data.Generic.Rep (class Generic)
@@ -81,9 +90,9 @@ Validation
 
 fullNameEither :: Maybe String -> Maybe String -> Maybe String -> Either String String
 fullNameEither first middle last =
-fullName <$> (first `errIfMissing` "First name must exist")
-             <*> (middle `errIfMissing` "Middle name must exist")
-             <*> (last `errIfMissing` "Last name must exist")
+  fullName <$> (first `errIfMissing` "First name must exist")
+          <*> (middle `errIfMissing` "Middle name must exist")
+          <*> (last `errIfMissing` "Last name must exist")
 
 ========================================================================================
 Explanation:
@@ -159,6 +168,119 @@ We still need to constrain the error Type to Semigroup since an Applicative is a
 -}  
 
 ------------------------------------
+{-
+Using Validation
+
+Validate a family of Father, Mother and Child all with names and ages.
+
+First a recap on records and rows:
+-}
+
+type Address = {
+  street :: String,
+  city :: String,
+  state :: String,
+  zip :: Int
+}
+
+isCalifornia :: ∀ r. { address :: Address | r } -> Boolean
+isCalifornia { address: { state } } = state == "CA"
+
+{-
+The salient portion here is the | r portion. That tells us that we can have other fields in this Record.
+
+type FamilyAgesRow = (fatherAge :: Int, motherAge :: Int, childAge :: Int)
+
+Notice the syntax for a Row is different than for a Record. We use Parentheses instead of Curly Brackets.
+
+Now here is a "Extensible Record":
+
+type Family r = { -- We have to pass r as the Row that will Extend this Record, hence the term Extensible Record.
+  fatherName :: String,
+  motherName :: String,
+  childName :: String
+  | r -- We specify that r is a Row Type that extends the Record using this syntax.
+}
+
+When creating a Family, e.g we could add other fields e.g.:
+Family (fatherOccupation :: Occupation, motherOccupation :: Occupation)
+
+Or we could add NO fields:
+Family ()
+-}
+
+newtype Age = Age Int
+
+derive instance genericAge :: Generic Age _
+
+instance showAge :: Show Age where
+  show = genericShow
+
+newtype FullName = FullName String
+
+derive instance genericFullName :: Generic FullName _
+
+instance showFullName :: Show FullName where
+  show = genericShow
+
+------
+-- Side note: The above would be printed different to the following:
+newtype Age' = Age' Int
+
+derive newtype instance showAge' :: Show Age'
+
+ageDerivedFromGeneric = show $ Age 10 -- If we log we'll see: (Age 10)
+
+ageDerivedDirect = show $ Age' 10     -- If we log we'll see: 10
+
+-- With "derive newtype", the compiler just delegates to the underlying Type
+
+------  
+
+type FamilyAgesRow r = (fatherAge :: Age, motherAge :: Age, childAge :: Age | r)
+
+type FamilyNamesRow r = (fatherName :: FullName, motherName :: FullName, childName :: FullName | r)
+
+newtype Family = Family { | FamilyNamesRow (FamilyAgesRow ()) }
+{-
+which can be written as:
+newtype Family = Family (Record (FamilyNamesRow (FamilyAgesRow ())))
+
+We have the newtype called Family that has a Data Constructor that takes a Record which has all of the fields in FamilyNamesRow and FamilyAgesRow.
+-}
+
+derive instance genericFamily :: Generic Family _
+
+instance showFamily :: Show Family where
+  show = genericShow
+
+newtype FamilyAges = FamilyAges { | FamilyAgesRow () }
+
+derive instance genericFamilyAges :: Generic FamilyAges _
+
+instance showFamilyAges :: Show FamilyAges where
+  show = genericShow
+
+-- Check to make sure that the age is in a specified range
+newtype LowerAge = LowerAge Int
+newtype UpperAge = UpperAge Int
+
+validateAge :: LowerAge -> UpperAge -> Age -> String -> Validation (Array String) Age
+validateAge (LowerAge lowerAge) (UpperAge upperAge) a @ (Age age) who
+  | age < lowerAge  = Validation $ Left [who <> " is too young"]
+  | age > upperAge  = Validation $ Left [who <> " is too old"]
+  | otherwise       = Validation $ Right a
+
+createFamilyAges :: { | FamilyAgesRow () } -> Validation (Array String) FamilyAges
+createFamilyAges { fatherAge, motherAge, childAge } =
+  FamilyAges <$> (
+    { fatherAge: _, motherAge: _, childAge: _ } -- Shorthand for the lambda function: \fatherAge motherAge childAge -> { fatherAge: fatherAge, motherAge: motherAge, childAge: childAge }
+    <$> (validateAge (LowerAge 18) (UpperAge 60) fatherAge "Father")
+    <*> (validateAge (LowerAge 18) (UpperAge 60) motherAge "Mother")
+    <*> (validateAge (LowerAge 1) (UpperAge 18) childAge "Child")
+  )
+
+------------------------------------
 
 test :: Effect Unit
 test = do
@@ -180,3 +302,12 @@ test = do
   log $ show $ pure (negate 1) == (pure negate <*> pure 1 :: Either Unit Int)
   -- LAW Interchange: u <*> pure x = pure (_ $ x) <*> u
   log $ show $ (pure negate <*> pure 1) == (pure (_ $ 1) <*> pure negate :: Either Unit Int)
+  log "------------------------------------"
+  log ageDerivedFromGeneric
+  log ageDerivedDirect
+  log "------------------------------------"
+  log $ show $ createFamilyAges { fatherAge: Age 40, motherAge: Age 30, childAge: Age 10 }
+  log $ show $ createFamilyAges { fatherAge: Age 400, motherAge: Age 300, childAge: Age 0 }
+  log $ show $ createFamilyAges { fatherAge: Age 4, motherAge: Age 3, childAge: Age 10 }
+  log $ show $ createFamilyAges { fatherAge: Age 40, motherAge: Age 30, childAge: Age 100 }
+  log $ show $ createFamilyAges { fatherAge: Age 40, motherAge: Age 3, childAge: Age 0 }
