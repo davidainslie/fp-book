@@ -27,6 +27,7 @@ npx spago build
     "contravariant",
     "profunctor",
     "identity",
-    "control"
+    "control",
+    "unfoldable"
   ]
 }
