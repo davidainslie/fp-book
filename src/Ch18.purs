@@ -205,6 +205,38 @@ instance sideEffectCountable :: SideEffect Countable where
 
 ------------------------------------------------
 
+{-
+The above SideEffect Type Class is in fact nearly a Monad, which is declared in PureScript using two Type Classes:
+
+class Apply m <= Bind m where
+  bind :: ∀ a b. m a -> (a -> m b) -> m b
+  
+infixl 1 bind as >>=
+
+class (Applicative m, Bind m) <= Monad m
+
+Monad basically allows us to compose functions of the form:
+a -> m b
+
+Functions of this type are commonly referred to as Monadic functions or Effectful Functions - Basically functions with side-effects.
+-}
+
+------------------------------------------------
+
+{-
+A general version of composeDebuggable:
+-}
+composeKleisli :: ∀ a b c m. Monad m => (b -> m c) -> (a -> m b) -> (a -> m c)
+composeKleisli g f x = f x >>= g
+
+infixr 5 composeKleisli as >=>
+
+{-
+So bind, Monadic Function Application, lets us write composeKleisli for Monads, just like $, Pure Function Application, lets us write compose for Functions:
+-}
+
+------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show y  

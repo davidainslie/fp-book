@@ -8,6 +8,11 @@ npm install -g spago
 npm install
 ```
 
+Watch out! I've had issues with Node on Mac with Homebrew. Sometimes (though not too often) one may have to run:
+```shell
+brew unlink node && brew link node
+```
+
 ```shell
 # Build e.g. after changes to spago.dhall
 npx spago build
@@ -297,3 +302,35 @@ instance bifunctorTuple :: Bifunctor (Threeple a) where
 ```
 
 Here we fix `a` and so the `x` (of Type `a`) is unaffected by the `bimap` function.
+
+## Apply
+
+```purescript
+class Functor f <= Apply f where
+  apply :: ∀ a b. f (a -> b) -> f a -> f b
+```
+
+## Applicative
+
+```purescript
+class Apply f <= Applicative f where
+  pure :: ∀ a. a -> f a
+```
+
+## Monad
+
+```purescript
+class Apply m <= Bind m where
+  bind :: ∀ a b. m a -> (a -> m b) -> m b
+  
+infixl 1 bind as >>=
+
+class (Applicative m, Bind m) <= Monad m
+```
+
+Monad basically allows us to compose functions of the form:
+```purescript
+a -> m b
+```
+
+Functions of this type are commonly referred to as Monadic functions or Effectful Functions - Basically functions with side-effects.
