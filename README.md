@@ -334,3 +334,58 @@ a -> m b
 ```
 
 Functions of this type are commonly referred to as Monadic functions or Effectful Functions - Basically functions with side-effects.
+
+Helper functions:
+```purescript
+composeKleisli :: ∀ a b c m . Monad m => (b -> m c) -> (a -> m b) -> (a -> m c)
+composeKleisli g f x = f x >>= g
+
+infixr 5 composeKleisli as >=>
+
+join :: ∀ a m. Bind m => m (m a) -> m a
+join m = m >>= identity
+```
+
+```purescript
+composeKleisliFlipped :: ∀ a b c m . Monad m => (a -> m b) -> (b -> m c) -> (a -> m c)
+composeKleisliFlipped = flip composeKleisli
+
+infixr 1 composeKleisliFlipped as <=<
+
+bindFlipped :: ∀ a b m. Bind m => (a -> m b) -> m a -> m b
+bindFlipped = flip bind
+
+infixr 1 bindFlipped as =<<
+```
+
+Monad Laws:
+
+Keeping in mind that the following `f`, `g` and `h` have type signatures of the form `a -> m b` i.e. they are monadic functions.
+```purescript
+pure >=> g = g                      [Left Identity]
+
+f >=> pure = f                      [Right Identity]
+
+(f >=> g) >=> h = f >=> (g >=> h)   [Associativity] 
+```
+
+The Left and Right Identity Laws says that pure must act like an identity for Kleisli Composition.
+
+The Associativity Law says that Kleisli Composition is Associative just like Pure Function Composition.
+
+Compare the Monad Laws with these for Pure Functions:
+```purescript
+identity >>> g = g                  [Left Identity]
+
+f >>> identity = f                  [Right Identity]
+
+(f >>> g) >>> h = f >>> (g >>> h)   [Associativity]
+```
+
+The similarities should make sense since Kleisli Composition allows us to compose Monadic Functions.
+So, we’d expect them to behave in the very same manner as Pure Function Composition.
+
+### >=> and >>=
+
+- >=> is Monadic Function Composition
+- >>= is Monadic Function Application

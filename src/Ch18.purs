@@ -2,9 +2,12 @@
 
 module Ch18 where
 
+import Data.Generic.Rep (class Generic)
+import Data.Int.Bits ((.&.))
 import Data.Monoid.Additive
 import Data.Tuple (Tuple(..))
 import Data.Show (show)
+import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
 import Prelude
@@ -237,7 +240,145 @@ So bind, Monadic Function Application, lets us write composeKleisli for Monads, 
 
 ------------------------------------------------
 
+-- Can we now show that Debuggable is a Monad? We'll create another version of Debuggable that is a newtype instead of simply a type alias:
+newtype Debuggable'' a = Debuggable'' (Tuple String a)
+
+derive newtype instance functorDebuggable'' :: Functor Debuggable''
+
+derive newtype instance applyDebuggable'' :: Apply Debuggable''
+
+derive newtype instance applicativeDebuggable'' :: Applicative Debuggable''
+
+instance bindDebuggable'' :: Bind Debuggable'' where
+  bind :: ∀ a b. Debuggable'' a -> (a -> Debuggable'' b) -> Debuggable'' b
+  bind (Debuggable'' (Tuple s x)) fab =
+    let (Debuggable'' (Tuple s' r)) = fab x in
+    Debuggable'' $ Tuple (s <> s') r
+
+------------------------------------------------
+
+-- Maybe Monad
+
+data Maybe a = Nothing | Just a
+
+instance functorMaybe :: Functor Maybe where
+  map _ Nothing = Nothing
+  map fn (Just x) = Just $ fn x
+
+instance applyMaybe :: Apply Maybe where
+  apply Nothing _ = Nothing
+  apply (Just fn) x = fn <$> x
+
+instance applicativeMaybe :: Applicative Maybe where
+  pure = Just
+
+instance bindMaybe :: Bind Maybe where
+  bind :: ∀ a b. Maybe a -> (a -> Maybe b) -> Maybe b
+  bind Nothing _ = Nothing
+  bind (Just x) fn = fn x
+
+instance monadMaybe :: Monad Maybe
+ 
+-- To show the following tests:
+derive instance genericMaybe :: Generic (Maybe a) _
+
+instance showMaybe :: Show a => Show (Maybe a) where
+  show :: Maybe a -> String
+  show = genericShow
+
+oddTest :: Int -> Maybe Int
+oddTest x = if x .&. 1 == 1 then Just x else Nothing
+
+greaterThanTest :: Int -> Int -> Maybe Int
+greaterThanTest min x = if x > min then Just x else Nothing
+
+lessThanTest :: Int -> Int -> Maybe Int
+lessThanTest max x = if x < max then Just x else Nothing
+
+gauntletUsingKleisliComposition :: Int -> Maybe Int
+gauntletUsingKleisliComposition = oddTest >=> pure <<< (_ + 1) >=> greaterThanTest 10 >=> lessThanTest 20
+
+gauntletUsingBind :: Int -> Maybe Int
+gauntletUsingBind x =
+  pure x >>= oddTest
+    >>= \o -> pure (o + 1)
+      >>= greaterThanTest 10 -- SAME AS >>= \y -> greaterThanTest 10 y
+        >>= \z -> lessThanTest 20 z
+
+-- LOOK OUT - With Bind we could end up going down "indentation hell" - That is when you reach for "Do Notation".
+
+{-
+A word on "discard" which can be implicitly applied to a "do" block.
+
+gauntlet :: Int -> Maybe Int
+gauntlet x = do
+  o <- oddTest x
+  let y = o + 1
+  z <- greaterThanTest 10 y
+  lessThanTest 20 z
+
+gauntlet :: Int -> Maybe Int
+gauntlet x = do
+  o <- oddTest x
+  let y = o + 1
+  greaterThanTest 10 y -- COMPILER ERROR!!
+  lessThanTest 20 y
+
+We can avoid the compiler error in two ways:
+
+Explicitly discard:
+  _ <- greaterThanTest 10 y 
+
+Implicitly discard :
+  greaterThanTest 10 y
+where we import Prelude discard and also have an instance of Discard for the Value we've discarding.
+
+Actually, there is a third way where we can use the "void" function:
+  void $ greaterThanTest 10 y
+
+To achieve the above when "binding", we can ignore a (previous) result by using "*>" instead of ">>=" e.g.
+
+gauntlet :: Int -> Maybe Int
+gauntlet x =
+  oddTest x
+    >>= \o -> pure (o + 1)
+      >>= \y -> greaterThanTest 10 y
+        *> lessThanTest 20 y -- Where *> is an alias for "applySecond"
+-}
+
+------------------------------------------------
+
+-- Either Monad
+
+data Either a b = Left a | Right b
+
+instance functorEither :: Functor (Either a) where
+  map _ (Left a)    = Left a
+  map fbc (Right b) = Right $ fbc b
+
+instance applyEither :: Apply (Either a) where
+  apply (Left a) _ = Left a
+  apply (Right fbc) fb = fbc <$> fb
+
+instance applicativeEither :: Applicative (Either a) where
+  pure = Right
+
+instance bindEither :: Bind (Either a) where
+  bind (Left a) _ = Left a
+  bind (Right b) fbmc = fbmc b -- Where fbmc is b -> m c
+
+instance monadEither :: Monad (Either a)   
+
+------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show y  
   log $ show y''
+  log "-----------------------------"
+  log $ show $ gauntletUsingKleisliComposition 14
+  log $ show $ gauntletUsingKleisliComposition 1
+  log $ show $ gauntletUsingKleisliComposition 93
+  log $ show $ gauntletUsingKleisliComposition 17
+  log "-----------------------------"
+  log $ show $ gauntletUsingBind 14
