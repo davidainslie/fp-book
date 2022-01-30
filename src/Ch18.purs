@@ -371,6 +371,90 @@ instance monadEither :: Monad (Either a)
 
 ------------------------------------------------
 
+-- Writer Monad
+
+newtype Writer w a = Writer (Tuple a w)
+{-
+It would be nicer to have "a" on the right, but this is the historical way
+- a: computational
+- w: log
+-}
+
+instance functorWriter :: Functor (Writer w) where -- We hold the Type "w" constant, i.e. we can only "map" over the computation Type "a"
+  map :: ∀ a b. (a -> b) -> Writer w a -> Writer w b
+  map fab (Writer (Tuple a w)) = Writer (Tuple (fab a) w)
+
+instance applyWriter :: Monoid w => Apply (Writer w) where
+  apply :: ∀ a b. Writer w (a -> b) -> Writer w a -> Writer w b
+  apply (Writer (Tuple fab l1)) (Writer (Tuple a l2)) = Writer (Tuple (fab a) (l1 <> l2))
+
+instance applicativeWriter :: Monoid w => Applicative (Writer w) where
+  pure :: ∀ a. a -> Writer w a
+  pure a = Writer (Tuple a mempty)
+
+instance bindWriter :: Monoid w => Bind (Writer w) where
+  bind :: ∀ a b. Writer w a -> (a -> Writer w b) -> Writer w b
+  bind (Writer (Tuple a l1)) faw =
+    faw a # \(Writer (Tuple b l2)) -> Writer (Tuple b (l1 <> l2))
+
+instance monadWriter :: Monoid w => Monad (Writer w)
+
+{-
+Monad API functions acting as Writer helper functions:
+
+tell :: ∀ w. w -> Writer w Unit
+
+listen :: ∀ a w. Writer w a -> Writer w (Tuple a w)
+
+pass :: ∀ a w. Writer w (Tuple a (w -> w)) -> Writer w a
+-}
+tell :: ∀ w. w -> Writer w Unit
+tell l = Writer (Tuple unit l)
+
+doNothingWithLog :: Writer (Array String) Int
+doNothingWithLog = do
+  tell ["We did nothing"]
+  -- Bind performs the magic; the way it threads through the processing is dependent on the how the Monad is implemented. In this case what does Writer do? Well.....
+  -- append the preceeding log, i.e. ["We did nothing"]
+  -- to the following log, i.e. mempty
+  pure 0
+
+-- In do notation there’s an implied >>= between each line.
+-- And since >>= is the bind implementation, it’s behavior is hidden from us and appears to be magic. But it’s not.
+-- Think of it as a Parallel Computation.  
+
+------------------------------------------------
+
+{-
+Parallel Computations
+
+There are 2 Computations that are present in every Monad.
+First is the Pure Computation, i.e. the code that you’ve written in the computation, for example:
+
+gauntlet :: Int -> Either String Int
+gauntlet x = do
+  o <- oddTest x
+  let y = o + 1
+  void $ greaterThanTest 10 y
+  lessThanTest 20 y
+
+The second computation is the Monadic Computation, i.e what the bind implementation is doing. In the above example, it’s checking for errors.
+Since the Monad’s bind implementation does this work for us, we’re freed to code without thinking too much about it.
+
+Some common Monads and their Monadic Computations:
+
+Identity  -> No Computation
+Maybe     -> Error Checking
+Either    -> Error Checking
+Writer    -> Log Appending
+Reader    -> Threading Read Only Value
+State     -> Threading State
+
+Notice what we’ve been calling a Side-effect is really a Parallel Computation, i.e. the Monadic Computation that’s being performed every time we use bind.
+-}
+
+------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show y  
