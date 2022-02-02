@@ -455,6 +455,126 @@ Notice what we’ve been calling a Side-effect is really a Parallel Computation,
 
 ------------------------------------------------
 
+-- Reader
+
+newtype Reader r a = Reader (r -> a)
+
+{-
+Type Constructor:
+r is the Type that the Reader will maintain and pass to every Function for us and a is the result of the Pure Computation.
+
+Data Constructor:
+Takes 1 Parameter and that’s a Function with the Type Signature r -> a. This Function takes an r, i.e. some read-only Value and produces an a, i.e. its Pure Computation.
+-}
+
+instance functorReader :: Functor (Reader r) where
+  map :: ∀ a b. (a -> b) -> Reader r a -> Reader r b
+  map fab (Reader fra) = Reader \r -> fab $ fra r -- OR the following alternatives
+  -- map fab (Reader fra) = Reader (fra >>> fab)
+  -- map fab (Reader fra) = Reader (fab <<< fra)
+
+instance applyReader :: Apply (Reader r) where
+  apply :: ∀ a b. Reader r (a -> b) -> Reader r a -> Reader r b
+  apply (Reader frf) (Reader fra) = Reader \r -> frf r $ fra r
+
+instance applicativeReader :: Applicative (Reader r) where
+  pure :: ∀ a. a -> Reader r a
+  -- pure x = Reader \r -> x BUT as r is not used, we can replace with _
+  -- pure x = Reader \_ -> x BUT shows that \_ -> x is equivalent to const x, therefor
+  -- pure x = Reader $ const x BUT with eta-reduction
+  pure = Reader <<< const
+
+{-
+The above implementation is a common pattern for Functors that contain Functions i.e. F \a -> b
+We also know that Functors map OUTPUTs, so the above Reader implementation first applies the contained function and then the function from "map".
+-}
+
+{-
+Now for Bind, remembering:
+
+class Apply m <= Bind m where
+  bind :: ∀ a b. m a -> (a -> m b) -> m b 
+-}
+runReader :: ∀ a r. Reader r a -> (r -> a)
+runReader (Reader f) = f
+
+instance bindReader :: Bind (Reader r) where
+  bind :: ∀ a b. Reader r a -> (a -> Reader r b) -> Reader r b
+  bind (Reader fra) far = Reader \r -> runReader (far $ fra r) r
+
+-- Finally, the Monad
+instance monadReader :: Monad (Reader r)
+
+-- And now the Reader (helper) API:
+ask :: ∀ r. Reader r r -- When the Reader returned by "ask" is run, it'll return the read-only value
+ask = Reader identity
+
+asks :: ∀ a r. (r -> a) -> Reader r a
+asks fra = Reader \r -> fra r
+
+------------------------------------------------
+
+-- We've done "read", and we've done "write" - But what if we want to both "read" and "write"? Enter State Monad
+
+{-
+State Monad
+-}
+
+newtype State s a = State (s -> Tuple a s)
+
+{-
+Looks a bit like Reader, but Reader does not give back the state it was given, as that state is "read-only" - State monad allows state to be changed while threaded through.
+A Function will change the State and return it along with its computation. We’ll take that new State and pass it to the next Function and so on.
+So when State is run, it’ll return both the computation of Type a and the new State of Type s.
+-}
+
+instance functorState :: Functor (State s) where
+  map :: ∀ a b. (a -> b) -> State s a -> State s b
+  map f (State fx) = State \s -> fx s # \(Tuple x s') -> Tuple (f x) s'
+
+instance applyState :: Apply (State s) where
+  apply :: ∀ a b. State s (a -> b) -> State s a -> State s b
+  apply (State ff) (State fx) = State \s -> ff s # \(Tuple g s') -> fx s' # \(Tuple x s'') -> Tuple (g x) s''
+
+{-
+Note that implementing "apply" with "ap" would be safer, to make sure or ordering of the applied functions where
+
+ap :: ∀ a b m. Monad m => m (a -> b) -> m a -> m b
+ap mf mx = do
+  f <- mf
+  x <- mx
+  pure $ f x
+-}
+
+instance applicativeState :: Applicative (State s) where
+  pure :: ∀ a. a -> State s a
+  pure x = State \s -> Tuple x s
+
+runState :: ∀ a s. State s a -> (s -> Tuple a s)
+runState (State f) = f
+
+instance bindState :: Bind (State s) where
+  bind :: ∀ a b. State s a -> (a -> State s b) -> State s b
+  bind (State fx) f = State \s -> fx s # \(Tuple x s') -> runState (f x) s'
+
+instance monadState :: Monad (State s)
+
+-- State API:
+
+get :: ∀ s. State s s
+get = State \s -> Tuple s s
+
+put :: ∀ s. s -> State s Unit
+put s = State \_ -> Tuple unit s
+
+modify :: ∀ s. (s -> s) -> State s s
+modify f = State \s -> let ns = f s in Tuple ns ns
+
+modify_ :: ∀ s. (s -> s) -> State s Unit
+modify_ f = State \s -> Tuple unit (f s)
+
+------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show y  
