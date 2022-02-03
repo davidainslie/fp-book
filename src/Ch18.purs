@@ -575,6 +575,72 @@ modify_ f = State \s -> Tuple unit (f s)
 
 ------------------------------------------------
 
+-- Use State as a Monadic Validation
+
+-- The original version (solution) using Either, will short-circuit i.e. stop the first time we get a Left
+-- First function errIfMissing is named errIfMissing' because we are going to rewrite it
+
+errIfMissing' :: Maybe String -> String -> Either String String
+errIfMissing' Nothing err = Left err
+errIfMissing' (Just s) _ = Right s
+
+fullName :: String -> String -> String -> String
+fullName first middle last = first <> " " <> middle <> " " <> last
+
+fullNameEither :: Maybe String -> Maybe String -> Maybe String -> Either String String
+fullNameEither first middle last =
+  fullName <$> (first `errIfMissing'` "First name must exist")
+           <*> (middle `errIfMissing'` "Middle name must exist")
+           <*> (last `errIfMissing'` "Last name must exist")
+
+-- OR using "do" notation:
+fullNameEither' :: Maybe String -> Maybe String -> Maybe String -> Either String String
+fullNameEither' first middle last = do
+  f <- errIfMissing' first "First name must exist"
+  m <- errIfMissing' middle "Middle name must exist"
+  l <- errIfMissing' last "Last name must exist"
+  pure $ fullName f m l
+
+-- Rewrite using State - Start by converting errIfMissing to use State instead of Either
+
+errIfMissing :: Maybe String -> String -> State (Array String) String
+errIfMissing Nothing err = do
+  modify_ (_ <> [err])
+  pure mempty
+errIfMissing (Just s) _ =
+  pure s
+
+fullNameValid :: Maybe String -> Maybe String -> Maybe String -> State (Array String) String
+fullNameValid first middle last = do
+  f <- errIfMissing first "First name must exist"
+  m <- errIfMissing middle "Middle name must exist"
+  l <- errIfMissing last "Last name must exist"
+  pure $ fullName f m l
+
+-- BUT we didn't actually need to use State in errIfMissing - It uses "append" which comes from Semigroup.
+-- We could replace State with Writer to have:
+errIfMissing'' :: Maybe String -> String -> Writer (Array String) String
+errIfMissing'' Nothing err = do
+  tell [err] -- The only required change moving from State to Writer
+  pure mempty
+errIfMissing'' (Just s) _ =
+  pure s
+
+-- Now, all we have to do is change the Type Signature on fullNameValid. Since both State and Writer are Monads, all of our code inside the do block doesn’t change.
+-- That’s because the compiler will use Writer’s Methods, i.e. bind and pure, instead of State’s Methods:
+fullNameValid' :: Maybe String -> Maybe String -> Maybe String -> Writer (Array String) String
+fullNameValid' first middle last = do
+  f <- errIfMissing'' first "First name must exist"
+  m <- errIfMissing'' middle "Middle name must exist"
+  l <- errIfMissing'' last "Last name must exist"
+  pure $ fullName f m l
+
+-- Just like State has a "runState" we'll need an equivalent for Writer, which takes 1 less parameter (see the test usage below)
+runWriter :: ∀ a w. Writer w a -> Tuple a w
+runWriter (Writer x) = x  
+
+------------------------------------------------
+
 test :: Effect Unit
 test = do
   log $ show y  
@@ -586,3 +652,7 @@ test = do
   log $ show $ gauntletUsingKleisliComposition 17
   log "-----------------------------"
   log $ show $ gauntletUsingBind 14
+  log "-----------------------------"
+  log $ show $ runState (fullNameValid Nothing (Just "") Nothing) []
+  log "-----------------------------"
+  log $ show $ runWriter (fullNameValid' Nothing (Just "") Nothing)
