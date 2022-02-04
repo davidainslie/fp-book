@@ -6,13 +6,11 @@ import Data.Generic.Rep (class Generic)
 import Data.Int.Bits ((.&.))
 import Data.Monoid.Additive
 import Data.Tuple (Tuple(..))
-import Data.Show (show)
+import Data.Show (class Show, show)
 import Data.Show.Generic (genericShow)
 import Effect (Effect)
 import Effect.Console (log)
-import Prelude
--- The compiler will probably suggest to use something like:
--- import Prelude (class Applicative, class Apply, class Functor, class Monoid, class Semigroup, class Semiring, Unit, discard, show, zero, (#), ($), (+), (<>))
+import Prelude (class Monad, class Bind, bind, (>>=), class Applicative, pure, class Apply, class Functor, class Monoid, mempty, class Semigroup, class Semiring, Unit, unit, discard, const, zero, identity, (#), ($), (+), (<>), (<$>), (<*>), (<), (>), (==))
   
 {-
 When you interface with the outside world, you’re dealing in the realm of Side-effects.
@@ -630,14 +628,33 @@ errIfMissing'' (Just s) _ =
 -- That’s because the compiler will use Writer’s Methods, i.e. bind and pure, instead of State’s Methods:
 fullNameValid' :: Maybe String -> Maybe String -> Maybe String -> Writer (Array String) String
 fullNameValid' first middle last = do
-  f <- errIfMissing'' first "First name must exist"
-  m <- errIfMissing'' middle "Middle name must exist"
-  l <- errIfMissing'' last "Last name must exist"
-  pure $ fullName f m l
+  fn <- errIfMissing'' first "First name must exist"
+  mn <- errIfMissing'' middle "Middle name must exist"
+  ln <- errIfMissing'' last "Last name must exist"
+  pure $ fullName fn mn ln
 
 -- Just like State has a "runState" we'll need an equivalent for Writer, which takes 1 less parameter (see the test usage below)
 runWriter :: ∀ a w. Writer w a -> Tuple a w
 runWriter (Writer x) = x  
+
+------------------------------------------------
+
+-- Kleisli Category
+-- Remember, Kleisli composition composes Monadic functions of form a -> m b
+-- See above definition of:
+-- composeKleisli
+
+-- along with composeKleisli we have:
+
+class Semigroupoid :: ∀ k. (k -> k -> Type) -> Constraint
+class Semigroupoid a where
+  compose :: ∀ b c d. a c d -> a b c -> a b d
+
+infixr 9 compose as <<<
+
+instance semigroupoidFn :: Semigroupoid (->) where
+  compose :: ∀ b c d. (c -> d) -> (b -> c) -> (b -> d)
+  compose cd bc x = cd (bc x)
 
 ------------------------------------------------
 
