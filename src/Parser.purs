@@ -121,6 +121,18 @@ parse (Parser fn) = fn
 -}
 
 {-
+Using "parse" we could rewrite our "applyParser" as:
+
+instance applyParser :: Apply (Parser e) where
+  apply :: ∀ a b. Parser e (a -> b) -> Parser e a -> Parser e b
+  apply p1 p2 = Parser \s -> case parse p1 s of
+    Left err -> Left err
+    Right (Tuple s1 h) -> case parse p2 s1 of
+      Left err -> Left err
+      Right (Tuple s2 x) -> Right $ Tuple s2 (h x)
+-}
+
+{-
 Next we need is a way to parse a single character from the String.
 This Parser will be the base Parser that all other Parsers will be built upon.
 -}

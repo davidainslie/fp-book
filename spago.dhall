@@ -28,6 +28,8 @@ npx spago build
     "profunctor",
     "identity",
     "control",
-    "unfoldable"
+    "unfoldable",
+    "unicode",
+    "control"
   ]
 }
