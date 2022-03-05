@@ -478,7 +478,7 @@ instance applyReader :: Apply (Reader r) where
 instance applicativeReader :: Applicative (Reader r) where
   pure :: ∀ a. a -> Reader r a
   -- pure x = Reader \r -> x BUT as r is not used, we can replace with _
-  -- pure x = Reader \_ -> x BUT shows that \_ -> x is equivalent to const x, therefor
+  -- pure x = Reader \_ -> x BUT shows that \_ -> x is equivalent to const x, therefore
   -- pure x = Reader $ const x BUT with eta-reduction
   pure = Reader <<< const
 
@@ -535,7 +535,7 @@ instance applyState :: Apply (State s) where
   apply (State ff) (State fx) = State \s -> ff s # \(Tuple g s') -> fx s' # \(Tuple x s'') -> Tuple (g x) s''
 
 {-
-Note that implementing "apply" with "ap" would be safer, to make sure or ordering of the applied functions where
+Note that implementing "apply" with "ap" would be safer, to make sure ordering of the applied functions where
 
 ap :: ∀ a b m. Monad m => m (a -> b) -> m a -> m b
 ap mf mx = do

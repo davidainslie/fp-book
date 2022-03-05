@@ -470,7 +470,10 @@ With all the above parsers, we can now handle:
 -}
 
 constChar :: ∀ e. ParserError e => Char -> Parser e Unit
-constChar c = void $ satisfy (singleton c) (_ == c)
+constChar = void <<< constChar'
+
+constChar' :: ∀ e. ParserError e => Char -> Parser e Char
+constChar' c = satisfy (singleton c) (_ == c)
 
 digitsToNum :: String -> Int
 digitsToNum = fromMaybe 0 <<< fromString
@@ -596,6 +599,33 @@ some' p = fromCharArray <<< fromNonEmpty (:) <$> someG (:) p
 many' :: ∀ e. Parser e Char -> Parser e String
 many' p = fromCharArray <$> manyG (:) p
 
+-- Using "some" and "many"
+
+digits :: ∀ e. ParserError e => Parser e String
+digits = some' digit
+
+-- Parser for: (\d{1,4}), ([a-zA-Z ]+)([0-9]*)
+
+ugly :: ∀ e. ParserError e => Parser e (Array String)
+ugly = do
+  p1 <- range' 1 4 digit
+  constChar ','
+  constChar ' '
+  p2 <- some' (letter <|> constChar' ' ')
+  p3 <- many' digit
+  pure [p1, p2, p3]
+
+-- The above is monadic - We can also write with applicative style:
+
+uglyA :: ∀ e. ParserError e => Parser e (Array String)
+uglyA =
+  (\p1 p2 p3 -> [p1, p2, p3]) 
+    <$> range' 1 4 digit
+    <* constChar ','
+    <* constChar ' '
+    <*> some' (letter <|> constChar' ' ')
+    <*> many' digit
+
 ------------------------------------
 
 test :: Effect Unit
@@ -612,20 +642,23 @@ test = do
   log "-----------------------------------"
   log $ show $ parse' (fromCharArray <$> (count 3 char)) "xyz"
   log "-----------------------------------"
-  log $ show $ parse' (count'' 3 digit) "123456"            -- (Right (Tuple "456" "123"))
-  log $ show $ parse' (count'' 3 digit) "abc456"            -- (Left (InvalidChar "digit"))
-  log $ show $ parse' (count'' 4 letter) "Freddy"           -- (Right (Tuple "dy" "Fred"))
-  log $ show $ parse' (count'' 10 alphaNum) "a1b2c3d4e5"    -- (Right (Tuple "" "a1b2c3d4e5"))
-  log $ show $ parse' (count'' 10 alphaNum) "######"        -- (Left (InvalidChar "alphaNum"))
+  log $ show $ parse' (count'' 3 digit) "123456"                -- (Right (Tuple "456" "123"))
+  log $ show $ parse' (count'' 3 digit) "abc456"                -- (Left (InvalidChar "digit"))
+  log $ show $ parse' (count'' 4 letter) "Freddy"               -- (Right (Tuple "dy" "Fred"))
+  log $ show $ parse' (count'' 10 alphaNum) "a1b2c3d4e5"        -- (Right (Tuple "" "a1b2c3d4e5"))
+  log $ show $ parse' (count'' 10 alphaNum) "######"            -- (Left (InvalidChar "alphaNum"))
   log "-----------------------------------"
-  log $ show $ parse' (atMost' (-2) alphaNum) "a1b2c3"      -- (Right (Tuple "a1b2c3" ""))
-  log $ show $ parse' (atMost' 2 alphaNum) "$_$"            -- (Right (Tuple "$_$" ""))
-  log $ show $ parse' (atMost' 2 alphaNum) "a1b2c3"         -- (Right (Tuple "b2c3" "a1"))
+  log $ show $ parse' (atMost' (-2) alphaNum) "a1b2c3"          -- (Right (Tuple "a1b2c3" ""))
+  log $ show $ parse' (atMost' 2 alphaNum) "$_$"                -- (Right (Tuple "$_$" ""))
+  log $ show $ parse' (atMost' 2 alphaNum) "a1b2c3"             -- (Right (Tuple "b2c3" "a1"))
   log "-----------------------------------"
-  log $ show $ parse' yearFirst "1999-12-31"                -- (Right (Tuple "" { day: (Day 31), format: YearFirst, month: (Month 12), year: (Year 1999) }))
+  log $ show $ parse' yearFirst "1999-12-31"                    -- (Right (Tuple "" { day: (Day 31), format: YearFirst, month: (Month 12), year: (Year 1999) }))
   log "-----------------------------------"
-  log $ show $ parse' monthFirst "12/31/1999"               -- (Right (Tuple "" { day: (Day 31), format: MonthFirst, month: (Month 12), year: (Year 1999) }))
+  log $ show $ parse' monthFirst "12/31/1999"                   -- (Right (Tuple "" { day: (Day 31), format: MonthFirst, month: (Month 12), year: (Year 1999) }))
   log "-----------------------------------"
-  log $ show $ parse' (some' digit) "2343423423abc"         -- (Right (Tuple "abc" "2343423423"))
-  log $ show $ parse' (many' digit) "_2343423423abc"        -- (Right (Tuple "_2343423423abc" ""))
-  log $ show $ parse' (some' digit) "_2343423423abc"        -- (Left (InvalidChar "digit"))
+  log $ show $ parse' (some' digit) "2343423423abc"             -- (Right (Tuple "abc" "2343423423"))
+  log $ show $ parse' (many' digit) "_2343423423abc"            -- (Right (Tuple "_2343423423abc" ""))
+  log $ show $ parse' (some' digit) "_2343423423abc"            -- (Left (InvalidChar "digit"))
+  log "-----------------------------------"
+  log $ show $ parse' ugly "17, some words"                     -- (Right (Tuple "" ["17","some words",""]))
+  log $ show $ parse' ugly "5432, some more words1234567890"    -- (Right (Tuple "" ["5432","some more words","1234567890"]))
