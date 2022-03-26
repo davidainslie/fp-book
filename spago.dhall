@@ -30,6 +30,7 @@ npx spago build
     "control",
     "unfoldable",
     "unicode",
-    "control"
+    "control",
+    "transformers"
   ]
 }
