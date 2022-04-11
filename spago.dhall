@@ -32,6 +32,13 @@ npx spago build
     "unicode",
     "control",
     "transformers",
-    "undefined"
+    "random",
+    "undefined",
+    "datetime",
+    "exceptions",
+    "aff",
+    "avar",
+    "node-buffer",
+    "node-fs-aff"
   ]
 }

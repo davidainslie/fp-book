@@ -1,4 +1,4 @@
-module Ch22 where
+module Ch221 where
 
 import Data.Identity
 import Data.Generic.Rep (class Generic)
@@ -17,7 +17,6 @@ No matter how complex our program gets, it eventually becomes one massive Functi
 
 -----------------------------------------------------
 
-test :: Effect Unit
-test = do
-  n <- random -- Where random is declared as: random :: Effect Number
-  log $ show n
+-- Run: npx spago run --main Ch221
+main :: Effect Unit
+main = random >>= \n -> log $ show n -- Where random is declared as: random :: Effect Number
