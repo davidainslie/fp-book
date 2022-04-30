@@ -37,8 +37,12 @@ npx spago build
     "datetime",
     "exceptions",
     "aff",
+    "aff-bus",
     "avar",
     "node-buffer",
-    "node-fs-aff"
+    "node-fs-aff",
+    "affjax",
+    "tailrec",
+    "argonaut"
   ]
 }
